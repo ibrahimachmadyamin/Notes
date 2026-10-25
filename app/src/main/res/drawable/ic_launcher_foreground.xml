@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ikon: lembar dokumen dengan tanda centang -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Lembar -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M38,30h24l10,10v38a2,2 0,0 1,-2 2H38a2,2 0,0 1,-2 -2V32a2,2 0,0 1,2 -2z" />
+    <!-- Lipatan -->
+    <path
+        android:fillColor="#FFBFDBFE"
+        android:pathData="M62,30v10h10z" />
+    <!-- Garis -->
+    <path
+        android:fillColor="#FF93C5FD"
+        android:pathData="M42,46h22v3H42zM42,53h22v3H42z" />
+    <!-- Centang hijau -->
+    <path
+        android:fillColor="#FF22C55E"
+        android:pathData="M58,72m-11,0a11,11 0,1 1,22 0a11,11 0,1 1,-22 0" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M53,72.5l3.5,3.5l7,-7l-2,-2l-5,5l-1.5,-1.5z" />
+</vector>
