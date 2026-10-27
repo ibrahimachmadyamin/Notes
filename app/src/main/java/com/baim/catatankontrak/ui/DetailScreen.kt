@@ -88,8 +88,9 @@ fun DetailScreen(
     var itemToDelete by remember { mutableStateOf<DocItem?>(null) }
     var notesFocused by remember { mutableStateOf(false) }
 
-    // Proporsi list : catatan = 3 : 1. Saat mengetik catatan, catatan diperbesar.
-    val listWeight by animateFloatAsState(if (notesFocused) 1f else 3f, label = "listWeight")
+    // Proporsi list : catatan. Saat tidak difokuskan, catatan diturunkan (list: 4.5 vs catatan: 1)
+    // agar daftar berkas di atas lebih leluasa. Saat diketik, catatan otomatis membesar.
+    val listWeight by animateFloatAsState(if (notesFocused) 1.2f else 4.5f, label = "listWeight")
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -353,7 +354,7 @@ private fun NotesPanel(
         Column(
             Modifier
                 .navigationBarsPadding()
-                .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp)
+                .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 6.dp)
         ) {
             Box(
                 Modifier
@@ -361,7 +362,7 @@ private fun NotesPanel(
                     .size(width = 36.dp, height = 4.dp)
                     .background(MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 "Catatan",
                 style = MaterialTheme.typography.titleMedium,
@@ -369,8 +370,9 @@ private fun NotesPanel(
             )
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                modifier = Modifier.padding(vertical = 6.dp),
+                modifier = Modifier.padding(vertical = 4.dp),
             )
+
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 BasicTextField(
                     value = value,
