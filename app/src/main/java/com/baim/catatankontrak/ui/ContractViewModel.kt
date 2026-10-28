@@ -7,12 +7,13 @@ import com.baim.catatankontrak.data.Contract
 import com.baim.catatankontrak.data.ContractStore
 import com.baim.catatankontrak.data.DocColor
 import com.baim.catatankontrak.data.DocItem
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -30,24 +31,41 @@ class ContractViewModel(app: Application) : AndroidViewModel(app) {
     /** Antrian simpan; CONFLATED = hanya snapshot terbaru yang ditulis. */
     private val saveQueue = Channel<List<Contract>>(Channel.CONFLATED)
 
+    /**
+     * Scope khusus penyimpanan, sengaja TIDAK memakai viewModelScope supaya
+     * penulisan terakhir tidak ikut dibatalkan saat aplikasi ditutup.
+     */
+    private val saveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     init {
         viewModelScope.launch {
             val data = withContext(Dispatchers.IO) { store.load() }
             _contracts.value = data.sortedByDescending { it.updatedAt }
             _loaded.value = true
         }
-        viewModelScope.launch(Dispatchers.IO) {
+        saveScope.launch {
             for (snapshot in saveQueue) {
                 runCatching { store.save(snapshot) }
             }
         }
     }
 
+    override fun onCleared() {
+        // Selesaikan sisa antrian lalu hentikan loop penyimpanan.
+        saveQueue.close()
+        super.onCleared()
+    }
 
     private fun commit(newList: List<Contract>) {
+        // Jangan menyimpan sebelum data lama selesai dibaca,
+        // kalau tidak data lama bisa tertimpa list kosong.
+        if (!_loaded.value) return
         val sorted = newList.sortedByDescending { it.updatedAt }
         _contracts.value = sorted
-        saveQueue.trySend(sorted)
+        if (saveQueue.trySend(sorted).isFailure) {
+            // Antrian sudah ditutup (ViewModel dibersihkan) -> simpan langsung.
+            saveScope.launch { runCatching { store.save(sorted) } }
+        }
     }
 
     private fun modify(contractId: String, block: (Contract) -> Contract) {
@@ -65,16 +83,27 @@ class ContractViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- Kontrak ----------
 
     fun addContract(title: String) {
-        commit(listOf(Contract(title = title.trim())) + _contracts.value)
+        val t = title.trim()
+        if (t.isEmpty()) return
+        commit(listOf(Contract(title = t)) + _contracts.value)
     }
 
-    fun renameContract(id: String, title: String) = modify(id) { it.copy(title = title.trim()) }
+    fun renameContract(id: String, title: String) {
+        val t = title.trim()
+        if (t.isEmpty()) return
+        modify(id) { it.copy(title = t) }
+    }
 
     fun deleteContract(id: String) {
         commit(_contracts.value.filterNot { it.id == id })
     }
 
-    fun updateNotes(id: String, notes: String) = modify(id) { it.copy(notes = notes) }
+    /** Simpan catatan; diabaikan jika isinya sama (agar urutan kartu tidak berubah tanpa alasan). */
+    fun updateNotes(id: String, notes: String) {
+        val current = _contracts.value.firstOrNull { it.id == id } ?: return
+        if (current.notes == notes) return
+        modify(id) { it.copy(notes = notes) }
+    }
 
     // ---------- Berkas ----------
 
@@ -92,8 +121,10 @@ class ContractViewModel(app: Application) : AndroidViewModel(app) {
         modifyItem(contractId, itemId) { it.copy(color = it.color.next()) }
     }
 
-    fun addItem(contractId: String, name: String) = modify(contractId) {
-        it.copy(items = it.items + DocItem(name = name.trim(), custom = true))
+    fun addItem(contractId: String, name: String) {
+        val n = name.trim()
+        if (n.isEmpty()) return
+        modify(contractId) { it.copy(items = it.items + DocItem(name = n, custom = true)) }
     }
 
     fun deleteItem(contractId: String, itemId: String) = modify(contractId) { c ->

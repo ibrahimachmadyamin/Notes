@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.layout.fillMaxWidth
+import kotlinx.coroutines.delay
 
 @Composable
 fun TextInputDialog(
@@ -35,12 +36,15 @@ fun TextInputDialog(
     val focus = remember { FocusRequester() }
     val valid = value.text.isNotBlank()
 
-    LaunchedEffect(Unit) { focus.requestFocus() }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
+            // Dijalankan di dalam komposisi dialog, setelah field terpasang.
+            LaunchedEffect(Unit) {
+                delay(100)
+                runCatching { focus.requestFocus() }
+            }
             OutlinedTextField(
                 value = value,
                 onValueChange = { value = it },

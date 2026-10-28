@@ -66,12 +66,14 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.imeNestedScroll
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.baim.catatankontrak.data.Contract
 import com.baim.catatankontrak.data.DocColor
 import com.baim.catatankontrak.data.DocItem
@@ -97,8 +99,7 @@ fun DetailScreen(
     var notesFocused by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
-    val density = LocalDensity.current
-    val isKeyboardOpen = WindowInsets.ime.getBottom(density) > 0
+    val isKeyboardOpen = WindowInsets.isImeVisible
 
     // Saat keyboard ditutup (via tombol Back / tombol sembunyikan keyboard),
     // otomatis lepaskan fokus dari kolom catatan agar panel langsung turun kembali.
@@ -246,6 +247,9 @@ private fun DocRow(
     val bg by animateColorAsState(palette.background(color), label = "rowBg")
     val accent by animateColorAsState(palette.accent(color), label = "rowAccent")
     val shape = RoundedCornerShape(14.dp)
+    // Selalu memakai callback terbaru di dalam gesture detector yang berumur panjang.
+    val currentToggle by rememberUpdatedState(onToggleChecked)
+    val currentLongPress by rememberUpdatedState(onLongPress)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -271,8 +275,8 @@ private fun DocRow(
                 .clip(RoundedCornerShape(8.dp))
                 .pointerInput(item.id) {
                     detectTapGestures(
-                        onTap = { onToggleChecked() },
-                        onLongPress = { onLongPress() }
+                        onTap = { currentToggle() },
+                        onLongPress = { currentLongPress() }
                     )
                 }
                 .padding(vertical = 8.dp, horizontal = 4.dp)
@@ -305,6 +309,8 @@ private fun DocRow(
 private fun ColorButton(color: DocColor, enabled: Boolean, onClick: () -> Unit) {
     val context = LocalContext.current
     val palette = LocalDocPalette.current
+    // Simpan referensi toast supaya ketukan beruntun tidak menumpuk antrian toast.
+    val toastRef = remember { mutableStateOf<Toast?>(null) }
     val fill by animateColorAsState(
         if (color == DocColor.BASE) MaterialTheme.colorScheme.surface else palette.accent(color),
         label = "btnFill",
@@ -318,11 +324,12 @@ private fun ColorButton(color: DocColor, enabled: Boolean, onClick: () -> Unit) 
                 if (enabled) {
                     onClick()
                 } else {
-                    Toast.makeText(
+                    toastRef.value?.cancel()
+                    toastRef.value = Toast.makeText(
                         context,
                         "Centang berkas dahulu untuk mengubah warna",
                         Toast.LENGTH_SHORT
-                    ).show()
+                    ).also { it.show() }
                 }
             }
             .alpha(if (enabled) 1f else 0.45f),
@@ -356,22 +363,23 @@ private fun NotesPanel(
 ) {
     // State lokal per kontrak, supaya posisi kursor tidak lompat saat autosave.
     var value by remember(contractId) { mutableStateOf(TextFieldValue(initial)) }
+    val currentOnChange by rememberUpdatedState(onChange)
 
-    // Debounce autosave agar tidak memicu recomposition berlebihan saat mengetik cepat
-    LaunchedEffect(value.text) {
-        if (value.text != initial) {
-            delay(400)
-            onChange(value.text)
-        }
+    // Autosave dengan jeda 400 ms setelah berhenti mengetik.
+    // (ViewModel mengabaikan jika isi tidak berubah.)
+    LaunchedEffect(contractId, value.text) {
+        delay(400)
+        currentOnChange(value.text)
     }
 
-    // Pastikan jika pindah halaman atau ditutup, tulisan terakhir langsung tersimpan
+    // Simpan segera saat aplikasi diminimize (jaga-jaga app dimatikan sistem)...
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        currentOnChange(value.text)
+    }
+
+    // ...dan saat keluar dari halaman ini.
     DisposableEffect(contractId) {
-        onDispose {
-            if (value.text != initial) {
-                onChange(value.text)
-            }
-        }
+        onDispose { currentOnChange(value.text) }
     }
 
     Surface(

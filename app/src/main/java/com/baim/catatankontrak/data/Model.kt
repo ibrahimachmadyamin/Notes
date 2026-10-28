@@ -65,8 +65,8 @@ data class Contract(
 
     companion object {
         fun fromJson(o: JSONObject): Contract {
-            val arr = o.optJSONArray("items") ?: JSONArray()
-            val parsedItems = (0 until arr.length()).mapNotNull {
+            val arr = o.optJSONArray("items")
+            val parsedItems = if (arr == null) DefaultDocs.create() else (0 until arr.length()).mapNotNull {
                 runCatching { DocItem.fromJson(arr.getJSONObject(it)) }.getOrNull()
             }
             return Contract(
@@ -75,7 +75,7 @@ data class Contract(
                 notes = o.optString("notes"),
                 createdAt = o.optLong("createdAt", System.currentTimeMillis()),
                 updatedAt = o.optLong("updatedAt", System.currentTimeMillis()),
-                items = if (parsedItems.isNotEmpty()) parsedItems else DefaultDocs.create(),
+                items = parsedItems,
             )
         }
     }
