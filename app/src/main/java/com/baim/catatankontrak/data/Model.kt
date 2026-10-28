@@ -87,6 +87,8 @@ object DefaultDocs {
         "TOR",
         "RAB",
         "Justifikasi",
+        "PR",
+        "PO",
         "Nota Dinas",
         "SPK / Kontrak",
         "RAB Baru",
@@ -103,3 +105,4 @@ object DefaultDocs {
 
     fun create(): List<DocItem> = names.map { DocItem(name = it) }
 }
+

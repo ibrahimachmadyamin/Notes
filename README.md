@@ -6,7 +6,7 @@ Aplikasi Android untuk mencatat progres berkas kontrak pekerjaan.
 - Halaman utama berisi kartu pekerjaan. Kartu yang terakhir diubah otomatis naik ke paling atas.
 - Tombol **+** untuk menambah pekerjaan, ikon tempat sampah untuk menghapus (ada konfirmasi).
 - Tiap pekerjaan punya halaman sendiri:
-  - **3/4 atas**: daftar berkas (TOR, RAB, Justifikasi, Nota Dinas, SPK / Kontrak, RAB Baru, Amandemen,
+  - **3/4 atas**: daftar berkas (TOR, RAB, Justifikasi, PR, PO, Nota Dinas, SPK / Kontrak, RAB Baru, Amandemen,
     BAPP, BASTP, BAP, Nilai Kinerja, Rekap Bobot, Faktur Pajak, Permohonan Pembayaran, Kwitansi).
     - Checkbox di kanan.
     - Tombol bulat di kiri mengganti warna baris: Base → Hijau → Kuning → Base.
