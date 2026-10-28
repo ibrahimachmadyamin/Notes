@@ -65,6 +65,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imeNestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import com.baim.catatankontrak.data.Contract
 import com.baim.catatankontrak.data.DocColor
 import com.baim.catatankontrak.data.DocItem
@@ -88,9 +94,28 @@ fun DetailScreen(
     var itemToDelete by remember { mutableStateOf<DocItem?>(null) }
     var notesFocused by remember { mutableStateOf(false) }
 
-    // Proporsi list : catatan. Saat tidak difokuskan, catatan diturunkan (list: 4.5 vs catatan: 1)
-    // agar daftar berkas di atas lebih leluasa. Saat diketik, catatan otomatis membesar.
-    val listWeight by animateFloatAsState(if (notesFocused) 1.2f else 4.5f, label = "listWeight")
+    val focusManager = LocalFocusManager.current
+    val density = LocalDensity.current
+    val isKeyboardOpen = WindowInsets.ime.getBottom(density) > 0
+
+    // Saat keyboard ditutup (via tombol Back / tombol sembunyikan keyboard),
+    // otomatis lepaskan fokus dari kolom catatan agar panel langsung turun kembali.
+    LaunchedEffect(isKeyboardOpen) {
+        if (!isKeyboardOpen) {
+            focusManager.clearFocus()
+            notesFocused = false
+        }
+    }
+
+    // Default proporsi: 3/4 daftar berkas (list: 3f) dan 1/4 catatan (notes: 1f).
+    // Hanya saat keyboard terbuka DAN catatan sedang diedit, catatan naik memberi ruang (list: 1.5f).
+    // Begitu keyboard ditutup, proporsi DIJAMIN langsung kembali ke 1/4 layar (list: 3f).
+    val isExpanded = isKeyboardOpen && notesFocused
+    val listWeight by animateFloatAsState(
+        targetValue = if (isExpanded) 1.5f else 3f,
+        animationSpec = tween(durationMillis = 250),
+        label = "listWeight"
+    )
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -134,8 +159,10 @@ fun DetailScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .weight(listWeight)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .imeNestedScroll(),
             ) {
+
                 itemsIndexed(contract.items, key = { _, it -> it.id }) { index, item ->
                     DocRow(
                         index = index + 1,
